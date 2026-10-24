@@ -1,0 +1,3 @@
+{
+  "error": { "code": "not_ready", "message": "the vector DB is still loading" }
+}

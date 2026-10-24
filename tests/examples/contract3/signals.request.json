@@ -1,0 +1,74 @@
+{
+  "events": [
+    {
+      "type": "imported_play",
+      "source": "PlayerData",
+      "hash": "7777777777777777777777777777777777777777",
+      "characteristic": "Standard",
+      "difficulty": "Expert",
+      "count": 12,
+      "at": "2026-10-04T11:00:00Z"
+    },
+    {
+      "type": "upvote",
+      "source": "votedSongs",
+      "hash": "7777777777777777777777777777777777777777",
+      "at": "2026-10-04T11:00:00Z"
+    },
+    {
+      "type": "play",
+      "hash": "2222222222222222222222222222222222222222",
+      "characteristic": "Standard",
+      "difficulty": "Hard",
+      "result": "clear",
+      "modifiers": {
+        "speed": 1.0,
+        "noFail": false
+      },
+      "accuracy": 0.912,
+      "at": "2026-10-04T12:00:00Z"
+    },
+    {
+      "type": "play",
+      "hash": "2222222222222222222222222222222222222222",
+      "characteristic": "Standard",
+      "difficulty": "Hard",
+      "result": "restart",
+      "modifiers": {
+        "speed": 1.0,
+        "noFail": false
+      },
+      "at": "2026-10-04T12:03:00Z"
+    },
+    {
+      "type": "upvote",
+      "hash": "2222222222222222222222222222222222222222",
+      "at": "2026-10-04T12:04:00Z"
+    },
+    {
+      "type": "like",
+      "hash": "2222222222222222222222222222222222222222",
+      "at": "2026-10-04T12:04:30Z"
+    },
+    {
+      "type": "like_removed",
+      "hash": "2222222222222222222222222222222222222222",
+      "at": "2026-10-04T12:04:40Z"
+    },
+    {
+      "type": "user_delete",
+      "hash": "3333333333333333333333333333333333333333",
+      "at": "2026-10-04T12:05:00Z"
+    },
+    {
+      "type": "recommendation",
+      "requestId": "r-20261004-000001",
+      "preset": "song",
+      "hash": "2222222222222222222222222222222222222222",
+      "characteristic": "Standard",
+      "difficulty": "Hard",
+      "stage": "downloaded",
+      "at": "2026-10-04T12:06:00Z"
+    }
+  ]
+}

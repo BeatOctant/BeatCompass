@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "the token is missing or revoked; pair again"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "apiVersion": "2.0",
+  "hostVersion": "0.1.0",
+  "status": "degraded",
+  "reason": "schema_unsupported",
+  "db": null
+}

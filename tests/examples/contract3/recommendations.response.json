@@ -1,0 +1,37 @@
+{
+  "requestId": "r-20261004-000001",
+  "dbVersion": "2026.10.04",
+  "aims": { "Standard": "normal" },
+  "replaced": [
+    { "from": "9999999999999999999999999999999999999999", "to": "1111111111111111111111111111111111111111" }
+  ],
+  "ignoredWeights": [],
+  "candidates": [
+    {
+      "rank": 1,
+      "hash": "2222222222222222222222222222222222222222",
+      "characteristic": "Standard",
+      "difficulty": "Hard",
+      "reason": {
+        "views": { "clap_htsat_unfused@1": 0.41, "chart_patterns@2": 0.37 },
+        "difficulty": {
+          "aim": "normal",
+          "distance": 0.41,
+          "target": 0.45,
+          "clearChance": 0.83,
+          "nearestStrong": { "hash": "3333333333333333333333333333333333333333", "characteristic": "Standard", "difficulty": "Expert" }
+        }
+      }
+    },
+    {
+      "rank": 2,
+      "hash": "6666666666666666666666666666666666666666",
+      "characteristic": "OneSaber",
+      "difficulty": "Expert",
+      "reason": {
+        "views": { "clap_htsat_unfused@1": 0.39 },
+        "difficulty": null
+      }
+    }
+  ]
+}

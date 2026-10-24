@@ -1,0 +1,16 @@
+{
+  "apiVersion": "2.0",
+  "hostVersion": "0.1.0",
+  "status": "ready",
+  "db": {
+    "dbVersion": "2026.10.04",
+    "schemaVersion": "1.1",
+    "views": ["clap_htsat_unfused@1", "meta_tags@2", "chart_patterns@2"],
+    "roles": { "music": ["clap_htsat_unfused@1"], "meta": ["meta_tags@2"], "chart": ["chart_patterns@2"] },
+    "genres": ["jpop", "rock"]
+  },
+  "paired": true,
+  "instanceId": "4f1c2a9d8b7e6f50",
+  "signals": 9,
+  "presetsRevision": "2026.10.04-1"
+}

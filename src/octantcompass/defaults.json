@@ -1,0 +1,19 @@
+{
+  "db": null,
+  "host": "127.0.0.1",
+  "port": 23287,
+  "pair_code_digits": 6,
+  "pair_code_seconds": 300,
+  "pair_code_attempts": 5,
+  "health_timeout": 1,
+  "poll_seconds": 0.1,
+  "startup_timeout": 10,
+  "shutdown_timeout": 5,
+  "index_url": null,
+  "index_max_megabytes": 16,
+  "log_lines": 500,
+  "idle_minutes": 30,
+  "trusted_keys": {},
+  "allow_unsigned_db": false,
+  "start_at_login": false
+}

@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "version_mismatch",
+    "message": "OctantCompass speaks API 2.0 and OctantPath sent 1.0; update OctantPath",
+    "apiVersion": "2.0",
+    "requestApiVersion": "1.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.1",
+  "dbVersion": "2026.10.04",
+  "builtAt": "2026-10-04T00:00:00Z",
+  "calibrationId": "cal-20261004",
+  "counts": { "maps": 120000, "charts": 410000 },
+  "views": {
+    "clap_htsat_unfused@1": { "role": "music", "rowKind": "maps", "rows": 118500, "dim": 512 },
+    "chart_patterns@2": { "role": "chart", "rowKind": "charts", "rows": 405000, "dim": 64 },
+    "genre_words@1": { "role": "genre", "rowKind": "maps", "rows": 118500, "dim": 512 }
+  },
+  "skippedViews": [],
+  "genres": ["jpop", "rock"]
+}

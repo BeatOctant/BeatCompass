@@ -1,0 +1,16 @@
+{
+  "dbVersion": "2026.10.04",
+  "likedMaps": 42,
+  "plays": 380,
+  "playStyles": {
+    "Standard": {
+      "strongCharts": 200,
+      "features": { "nps": 5.8, "njs": 17.5 },
+      "typicalDistance": 0.45,
+      "clearCurve": true,
+      "weakDirections": [{ "feature": "njs", "direction": "low", "weight": 1.8 }]
+    }
+  },
+  "replaced": [],
+  "unknownEvents": 0
+}

@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<title>OctantCompass</title>
+<script>
+// テーマ: 窓で選んだもの（window.py が data-theme-setting に入れる）。自動は OS のものに従い、OS で変えたらすぐ変える。描く前に決める
+(() => {
+  const root = document.documentElement;
+  const light = matchMedia('(prefers-color-scheme: light)');
+  const apply = () => {
+    const setting = root.dataset.themeSetting || 'auto';
+    root.dataset.theme = setting === 'auto' ? (light.matches ? 'light' : 'dark') : setting;
+  };
+  apply();
+  light.addEventListener('change', () => { apply(); window.themeChanged?.(); });
+  window.useTheme = (setting) => { root.dataset.themeSetting = setting; apply(); };
+})();
+</script>
+<style>
+  /* 色と部品は OctantPath Desktop（src/OctantPath.Desktop/wwwroot/index.html）に合わせる。
+     テーマはダークとライト（自動は OS に従う。2026-10-19）。色の見え方が違っても使えるよう、状態の色は赤と緑で分けず、
+     青緑・黄・朱にして明るさも変え、色だけに頼らず形（接続の印）と文でも分ける。文字は背景に対して 4.5:1 以上 */
+  :root {
+    color-scheme: dark;  /* 窓（WebView）の中の入力部品も暗い色で描く */
+    --bg: #0f1115;
+    --surface: #171a21;
+    --surface2: #1e222b;
+    --hover: #262b36;
+    --line: #2a2f3a;
+    --text: #e8eaed;
+    --muted: #9aa2b1;
+    --accent: #4c9aff;
+    --accent-weak: rgba(76, 154, 255, 0.16);
+    --primary: #2f74d6;
+    --primary-hover: #2563c4;
+    --on-primary: #ffffff;
+    --ok: #2fbf9f;
+    --warn: #e3b341;
+    --bad: #ff7a59;
+    --scroll: #343a46;
+    --scroll-hover: #4a5262;
+    --code: #c9d1d9;
+    --backdrop: rgba(0, 0, 0, 0.55);
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface2: #f0f2f5;
+    --hover: #e6e9ef;
+    --line: #d8dce3;
+    --text: #1a1d23;
+    --muted: #59616e;
+    --accent: #0b63ce;
+    --accent-weak: rgba(11, 99, 206, 0.10);
+    --primary: #0b63ce;
+    --primary-hover: #0a56b3;
+    --on-primary: #ffffff;
+    --ok: #007360;
+    --warn: #8a5c00;
+    --bad: #c4320a;
+    --scroll: #c4c9d2;
+    --scroll-hover: #a9b0bc;
+    --code: #2b313b;
+    --backdrop: rgba(15, 20, 30, 0.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  /* この画面が崩れずに出る最小の大きさ（2026-10-19: 720p）は、window.py が html に入れる（minsize。窓もこれより小さくしない）。
+     ページは窓の高さに収めて全体では動かさず、欄の中だけが動く（OctantPath Desktop と同じ）。
+     ページが縦に動くと縦のバーの分だけ幅が足りず、横にも動いてしまう。画面そのものがこれより小さいときだけ、ページごと動く */
+  body { background: var(--bg); color: var(--text); font: 14px/1.5 "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif; display: flex; flex-direction: column;
+    height: 100vh; min-width: var(--page-min-width); min-height: var(--page-min-height); }
+  button { font: inherit; color: inherit; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--scroll-hover); background-clip: padding-box; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+  .muted { color: var(--muted); }
+
+  .top { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .top .brand { font-weight: 700; letter-spacing: .02em; margin-right: 6px; white-space: nowrap; }
+  /* 何が動いているかをすぐ分かるよう、名前の横に版とコミットを出す（2026-10-13。OctantPath Desktop と同じ） */
+  .top .brand .ver { font-weight: 400; letter-spacing: 0; font-size: 12px; color: var(--muted); margin-left: 6px; }
+  .top .header { flex: 1; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .conn { display: flex; align-items: center; gap: 7px; font-size: 12.5px; white-space: nowrap; }
+  /* 接続の印は色と形で: つながっている＝塗った丸、途中＝輪、止まっている・届かない＝菱形 */
+  .dot { width: 8px; height: 8px; flex: none; background: var(--bad); border-radius: 1px; transform: rotate(45deg) scale(.85); }
+  .dot.ok { background: var(--ok); border-radius: 50%; transform: none; }
+  .dot.mid { background: transparent; border: 2px solid var(--warn); border-radius: 50%; transform: none; }
+  /* キーボードで動かしたとき、どこにいるかが見えるように */
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  input.text:focus-visible { outline: none; }
+  select.lang { background: var(--surface2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; color: var(--text); font: inherit; cursor: pointer; }
+  /* 選ぶ欄は OS の部品の色（Linux の WebKitGTK では白）にせず、矢印も自分で描く */
+  select { appearance: none; -webkit-appearance: none; padding-right: 26px !important;
+    background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%) !important;
+    background-position: right 13px center, right 9px center !important; background-size: 4px 4px !important; background-repeat: no-repeat !important; }
+
+  /* 欄は窓の下端まで伸ばす（OctantPath Desktop と同じく、下に空いた帯を残さない） */
+  .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: 10px; padding: 10px; flex: 1; min-height: 0; }
+  .stack { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
+  /* 欄の中で動くのは、欄ごとに 1 つの .scroll だけ。中身が多くても欄は列の高さを超えず、そこが動く */
+  .col { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  /* 列の残りを埋める欄（つないだ OctantPath、ログ、DB、設定）。上の欄の中身が多いときは上の欄が縮み、こちらにはこの高さを残す */
+  .col.grow { flex: 1; min-height: 240px; }
+  .col > h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .col > h2 .count { font-weight: 400; letter-spacing: 0; text-transform: none; }
+  .empty { padding: 16px; color: var(--muted); text-align: center; }
+
+  input.text { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 6px 9px; font: inherit; outline: none; }
+  input.text:focus { border-color: var(--accent); }
+  .btn { background: var(--surface2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
+  .btn:hover:not(:disabled) { background: var(--hover); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
+  .btn.primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn.danger:hover:not(:disabled) { border-color: var(--bad); color: var(--bad); }
+
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 13px; margin: 0; }
+  .kv dt { color: var(--muted); white-space: nowrap; }
+  .kv dd { margin: 0; word-break: break-all; }
+  .kv .problem { white-space: pre-wrap; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; }
+  .st-ready { color: var(--ok); }
+  .st-loading { color: var(--warn); }
+  .st-resting { color: var(--muted); }
+  .st-degraded { color: var(--bad); }
+  .tabs { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; flex: none; }
+  .tabs button { background: transparent; border: 0; padding: 4px 12px; cursor: pointer; font-size: 13px; color: var(--muted); }
+  .tabs button.on { background: var(--accent-weak); color: var(--text); font-weight: 600; }
+  [hidden] { display: none !important; }
+  .warn { color: var(--warn); }
+  .set { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .set:last-child { border-bottom: 0; }
+  .set .name .key { display: block; font-size: 11px; color: var(--muted); font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  .set .val { word-break: break-all; }
+  .set .val .next { display: block; font-size: 12px; color: var(--warn); }
+  .set .btn { padding: 3px 10px; font-size: 12.5px; }
+  .editor { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-left: 2px solid var(--accent); background: var(--bg); border-radius: 0 6px 6px 0; }
+  .editor .help { font-size: 12px; color: var(--muted); white-space: pre-line; }
+  .editor textarea, .editor select { background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 6px 9px; font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; outline: none; }
+  .editor select { font: inherit; }
+  .editor .row2 { display: flex; gap: 6px; align-items: center; }
+  .editor .err { color: var(--bad); font-size: 12px; }
+  .group { font-size: 11.5px; color: var(--muted); margin: 12px 0 2px; }
+  .group:first-child { margin-top: 0; }
+  .block { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .label-sm { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+  .block .label-sm { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+  .form { display: flex; gap: 6px; }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .note:empty { display: none; }
+
+  .list { border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .sub { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .code { display: none; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--accent); background: var(--accent-weak); border-radius: 8px; }
+  .code.on { display: block; }
+  .code .row { display: flex; align-items: center; gap: 10px; }
+  .code .digits { font-size: 26px; font-weight: 700; letter-spacing: .25em; font-variant-numeric: tabular-nums; }
+  .code .muted { font-size: 12.5px; }
+  .h-foot { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+  .heading { font-size: 11.5px; color: var(--muted); margin: 8px 2px 4px; }
+  .tile { padding: 7px 12px; border-radius: 6px; background: var(--surface2); border: 1px solid var(--line); display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .tile .label { font-weight: 600; white-space: nowrap; }
+  .tile .hint { font-size: 12px; color: var(--muted); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .id { font-size: 11.5px; color: var(--muted); font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+
+  .log { margin: 0; font: 12px/1.6 ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--code); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; word-break: break-all; }
+  .notice { font-size: 12.5px; }
+  .notice h4 { font-size: 13px; margin: 12px 0 4px; }
+  .notice h4:first-child { margin-top: 0; }
+  .notice p { margin: 0 0 8px; }
+  .notice table { border-collapse: collapse; margin: 0 0 8px; }
+  .notice th, .notice td { border: 1px solid var(--line); padding: 3px 8px; text-align: left; }
+  .notice code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--surface2); padding: 0 4px; border-radius: 4px; }
+  .notice a { color: var(--accent); }
+  /* DB の利用条件とクレジットは長いので、詳細設定の欄には出さず、ボタンで開く窓に出す */
+  .link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; }
+  .link:hover { text-decoration: underline; }
+  dialog.sheet { width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 64px); padding: 0; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 10px; }
+  dialog.sheet::backdrop { background: var(--backdrop); }
+  dialog.sheet .head { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  dialog.sheet .body { padding: 12px 14px; }
+  dialog.sheet h3 { font-size: 13px; color: var(--muted); font-weight: 600; margin: 0 0 6px; }
+  dialog.sheet section + section { margin-top: 16px; }
+  dialog.sheet .credit { font-size: 12.5px; }
+  dialog.sheet .credit + .credit { margin-top: 4px; }
+  .log .warning { color: var(--warn); }
+  .log .error { color: var(--bad); }
+  .log .at { color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">OctantCompass<span class="ver" id="brand-ver"></span></span>
+  <nav class="tabs" id="tabs"><button data-tab="main" class="on" data-t="tab.main"></button><button data-tab="settings" data-t="tab.settings"></button></nav>
+  <div class="header" id="header-text"></div>
+  <select class="lang" id="lang" data-t-title="lang.title"></select>
+  <select class="lang" id="theme" data-t-title="theme.title"></select>
+  <div class="conn"><span class="dot" id="conn-dot"></span><span id="conn-text" data-t="top.checking"></span></div>
+  <button class="btn primary" id="start-btn" hidden data-t-title="top.startTitle" data-t="top.start"></button>
+  <button class="btn" id="restart-btn" disabled data-t-title="top.restartTitle" data-t="top.restart"></button>
+  <button class="btn danger" id="stop-btn" disabled data-t-title="top.stopTitle" data-t="top.stop"></button>
+</header>
+
+<div class="cols" id="tab-main">
+  <div class="stack">
+    <section class="col">
+      <h2 data-t="state.title"></h2>
+      <dl class="kv scroll" id="state"></dl>
+    </section>
+    <section class="col grow">
+      <h2 data-t="envs.title"></h2>
+      <div class="list scroll" id="envs"></div>
+      <div class="h-foot"><button class="btn" id="code-btn" data-t-title="envs.codeTitle" data-t="envs.code"></button></div>
+      <div class="code" id="code"><div class="row"><div class="digits" id="code-digits"></div><button class="btn" id="code-copy" data-t="envs.copy"></button></div><div class="muted" id="code-note"></div></div>
+    </section>
+  </div>
+  <div class="stack">
+    <section class="col">
+      <h2><span data-t="presets.title"></span> <span class="count" id="presets-revision"></span></h2>
+      <div class="scroll" id="presets"></div>
+    </section>
+    <section class="col grow">
+      <h2 data-t="log.title"></h2>
+      <pre class="log scroll" id="log"></pre>
+    </section>
+  </div>
+</div>
+
+<div class="cols" id="tab-settings" hidden>
+  <div class="stack">
+    <section class="col grow">
+      <h2 data-t="db.title"></h2>
+      <div class="scroll">
+      <dl class="kv" id="db"></dl>
+      <div class="block">
+      <div class="label-sm" data-t="import.title"></div>
+      <form class="form" id="import-form">
+        <input class="text" id="import-path" data-t-ph="import.input" autocomplete="off" spellcheck="false">
+        <button class="btn" type="button" id="import-pick" data-t="pick.button"></button>
+        <button class="btn primary" type="submit" id="import-btn" data-t="import.go"></button>
+      </form>
+      <div class="note" id="import-note"></div>
+      </div>
+      <div class="block">
+      <div class="label-sm" data-t="switch.title"></div>
+      <form class="form" id="switch-form">
+        <input class="text" id="switch-path" data-t-ph="switch.input" autocomplete="off" spellcheck="false">
+        <button class="btn" type="button" id="switch-pick" data-t="pick.button"></button>
+        <button class="btn" type="submit" id="switch-btn" data-t="switch.go"></button>
+      </form>
+      <div class="note" id="switch-note"></div>
+      </div>
+      <div class="block">
+      <div class="label-sm" data-t="update.title"></div>
+      <form class="form" id="update-form">
+        <input class="text" id="update-index" data-t-ph="update.input" autocomplete="off" spellcheck="false">
+        <button class="btn" type="button" id="update-check" data-t="update.check"></button>
+        <button class="btn primary" type="submit" id="update-go" disabled data-t="update.go"></button>
+        <button class="btn" type="button" id="update-cancel" hidden data-t="update.cancel"></button>
+      </form>
+      <div class="note" id="update-note"></div>
+      </div>
+      </div>
+    </section>
+  </div>
+  <div class="stack">
+    <section class="col grow">
+      <h2 data-t="settings.title"></h2>
+      <div class="scroll" id="settings"></div>
+      <div class="note" id="settings-note"></div>
+      <div class="h-foot" id="apply-foot" hidden><button class="btn primary" id="apply-btn" data-t="settings.apply"></button></div>
+    </section>
+  </div>
+</div>
+
+<dialog class="sheet" id="terms">
+  <div class="head"><strong data-t="terms.title"></strong><button class="btn" id="terms-close" data-t="terms.close"></button></div>
+  <div class="body" id="terms-body"></div>
+</dialog>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const LANGUAGES = ['en', 'ja'];
+const NAMES = { en: 'English', ja: '日本語' };
+
+// この画面は OctantCompass の窓（window.py）の中で動き、Python とは pywebview の橋（window.pywebview.api）で話す。HTTP のサーバーは持たない
+const bridge = () => window.pywebview.api;
+
+// 画面の文（ui/lang/<言語>.json を橋から読む）。T は文、H は HTML に入れるための逃がした文
+let TX = {};
+let EN = {};
+let language = 'en';
+const T = (key, args) => (TX[key] ?? EN[key] ?? key).replace(/\{(\w+)\}/g, (m, k) => (args && args[k] !== undefined ? String(args[k]) : m));
+const H = (key, args) => esc(T(key, args));
+const autoLanguage = () => (navigator.languages || [navigator.language]).map((l) => String(l).slice(0, 2)).find((l) => LANGUAGES.includes(l)) || 'en';
+
+async function loadLang() {
+  // この窓で選んだ言語（window.json。既定は自動で、OS の言語に従う）
+  const setting = await bridge().language();
+  language = setting === 'auto' || !LANGUAGES.includes(setting) ? autoLanguage() : setting;
+  const read = async (l) => { try { return await bridge().texts(l); } catch (e) { return {}; } };
+  TX = await read(language);
+  EN = language === 'en' ? TX : await read('en');
+  document.documentElement.lang = language;
+  document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = T(el.dataset.t); });
+  document.querySelectorAll('[data-t-title]').forEach((el) => { el.title = T(el.dataset.tTitle); });
+  document.querySelectorAll('[data-t-ph]').forEach((el) => { el.placeholder = T(el.dataset.tPh); });
+  const sel = $('lang');
+  sel.innerHTML = `<option value="auto">${H('lang.auto', { language: NAMES[autoLanguage()] })}</option>`
+    + LANGUAGES.map((l) => `<option value="${l}">${esc(NAMES[l])}</option>`).join('');
+  sel.value = LANGUAGES.includes(setting) ? setting : 'auto';
+  renderThemes();
+}
+
+// テーマ（window.json。自動は OS のものに従う）。選んだものは上の <head> の useTheme が描く前に当てる
+const THEMES = ['auto', 'dark', 'light'];
+function renderThemes() {
+  const root = document.documentElement;
+  const setting = root.dataset.themeSetting || 'auto';
+  $('theme').innerHTML = THEMES.map((t) => `<option value="${t}">${t === 'auto'
+    ? H('theme.auto', { theme: T(`theme.${root.dataset.theme}`) }) : H(`theme.${t}`)}</option>`).join('');
+  $('theme').value = setting;
+}
+window.themeChanged = renderThemes;
+
+// 手札の文は文字列か、言語ごとの対応表（OctantVector が返すまま）
+const pick = (v) => (v && typeof v === 'object' ? v[language] ?? v.en ?? Object.values(v)[0] : v) ?? '';
+
+let restarting = 0;  // 再起動を頼んだ時刻（同じプロセスが待ち受けを張り直すのを待つ）
+let restartedFrom = 0;  // 再起動を頼んだときの status.restart.number
+let notice = '';  // 上のバーに残す知らせ（再起動の失敗など）
+let startProblem = null;  // この窓からの起動が失敗した理由（止まっている間、「状態」に出す）。失敗していなければ null
+
+// 動いている OctantCompass の管理 API（manage.py の /manage/...）。窓が橋を通して渡す。止まっていれば not_running で断られる
+async function api(path, body) {
+  const result = await bridge().host(path, body === undefined ? null : body);
+  return { ok: result.ok, data: result.data || {} };
+}
+
+// ---- 状態 ----
+let running = false;  // OctantCompass が動いていて、管理 API に届く
+let starting = false;
+let status = null;  // 動いている OctantCompass の /manage/status
+let dbView = null;  // DB の欄（manager.py の database）: 使っている DB のフォルダとその manifest。動いていても止まっていても窓が読む
+let windowInfo = null;  // この窓の OctantCompass の版とデータフォルダ
+let closeRefused = false;  // DB の作業中に窓を閉じようとした（終わるまで閉じない）
+let presetsFor = undefined;
+
+function reasonText(code) { return code ? (TX[`reason.${code}`] || EN[`reason.${code}`] ? T(`reason.${code}`) : code) : null; }
+
+async function refreshStatus() {
+  let result;
+  try { result = await bridge().status(); } catch (e) { result = null; }
+  const was = running;
+  running = !!(result && result.running);
+  starting = !!(result && result.starting);
+  status = running ? result.host : null;
+  dbView = result ? result.db : null;
+  windowInfo = result ? result.window : windowInfo;
+  closeRefused = !!(result && result.closeRefused);
+  // この窓からの起動が失敗したら、止まった理由を上に出す（設定を直して、もう一度「起動」）
+  const start = result && result.start;
+  startProblem = start && !start.ok && !running && !starting ? start.problem || '' : null;
+  const done = status && status.restart && status.restart.number > restartedFrom;
+  if (restarting && done) {
+    restarting = 0;
+    notice = status.restart.ok ? ''
+      : T('top.restartFailed', { problem: status.restart.problem || '', listen: status.restart.listen || '' });
+  } else if (restarting && Date.now() - restarting > 30000) {
+    restarting = 0;
+    notice = T('top.restartLost');
+  }
+  renderStatus();
+  if (was !== running || done) { refreshSettings(); refreshEnvs(); refreshLog(); }
+  const version = status && status.status === 'ready' ? status.db?.dbVersion : null;
+  if (version !== presetsFor) { presetsFor = version; refreshPresets(); }
+}
+
+const none = () => H('state.none');
+const v = (x) => (x === null || x === undefined || x === '' ? none() : esc(x));
+const kv = (rows) => rows.filter(Boolean).map(([k, html]) => `<dt>${H(k)}</dt><dd>${html}</dd>`).join('');
+
+function renderStatus() {
+  const s = status;
+  const info = dbView?.info || {};
+  if (windowInfo) $('brand-ver').textContent = [windowInfo.version, windowInfo.commit].filter(Boolean).join(' · ');
+  $('start-btn').hidden = running || !!restarting;
+  $('start-btn').disabled = starting;
+  $('stop-btn').hidden = !running;
+  $('stop-btn').disabled = !s || !s.canStop || restarting;
+  $('restart-btn').disabled = !s || !s.canRestart || restarting;
+  $('code-btn').disabled = !s;
+  $('header-text').textContent = $('header-text').title = closeRefused ? T('top.closeRefused')
+    : startProblem !== null ? T('top.startFailed') : notice;
+  renderDb();
+  if (!s) {
+    // 止まっている間は、動いている OctantCompass にしかない欄（つないだ OctantPath・ログ）に、そう書くだけ。DB と設定は窓が持つので使える
+    const state = T(starting ? 'top.starting' : restarting ? 'top.restarting' : 'top.notRunning');
+    $('conn-dot').className = 'dot';
+    $('conn-text').textContent = state;
+    $('state').innerHTML = kv([
+      ['state.status', `<span class="st-degraded">${esc(state)}</span>`],
+      startProblem !== null ? ['state.reason', `<span class="problem">${esc(startProblem)}</span>`] : null,
+      ['state.dbVersion', v(info.dbVersion)],
+    ]);
+    $('envs').innerHTML = `<div class="empty">${H('stopped.note')}</div>`;
+    $('log').innerHTML = `<span class="at">${H('stopped.note')}</span>`;
+    return;
+  }
+  $('conn-dot').className = 'dot ' + (s.status === 'ready' ? 'ok' : 'mid');
+  $('conn-text').textContent = T(`status.${s.status}`);
+  // 1 枚目は動いているかと、つないでいる先だけ。DB の中身と設定は「詳細設定」
+  $('state').innerHTML = kv([
+    ['state.status', `<span class="st-${esc(s.status)}">${H(`status.${s.status}`)}</span>`],
+    s.reason ? ['state.reason', `${esc(reasonText(s.reason))} <span class="muted">(${esc(s.reason)})</span>`] : null,
+    s.update ? ['state.update', `${esc(reasonText(s.update))} <span class="muted">(${esc(s.update)})</span>`] : null,
+    ['state.dbVersion', v(info.dbVersion)],
+    ['state.listen', v(s.listen)],
+    ['state.startedAt', s.startedAt ? esc(new Date(s.startedAt).toLocaleString(language)) : none()],
+  ]);
+}
+
+// DB の欄。窓が使っている DB のフォルダの manifest を読む（読み込みはしない）ので、OctantCompass が DB を読み込む前も、止まっている間も出る
+function renderDb() {
+  const d = dbView || {};
+  const info = d.info || {};
+  const s = status;
+  $('db').innerHTML = kv([
+    ['state.dbVersion', v(info.dbVersion)],
+    d.problem ? ['state.dbProblem', `<span class="warn">${esc(reasonText(d.problem))}</span> <span class="muted">(${esc(d.problem)})</span>`] : null,
+    ['state.schemaVersion', v(info.schemaVersion)],
+    info.builtAt ? ['state.builtAt', v(info.builtAt)] : null,
+    ['state.views', info.views ? v(info.views.join(', ')) : none()],
+    ['state.genres', info.genres ? v(info.genres.length) : none()],
+    ['state.terms', info.notice || credits(info.credits) ? `<button class="link" id="terms-open">${H('terms.open')}</button>` : none()],
+    ['state.dbPath', v(d.path)],
+    // 渡したが OctantCompass がまだ使っていない DB（動いていればすぐ切り替える。開けなければ前の DB のまま、理由はログ）
+    d.pending ? ['state.pending', `${esc(d.pending)}<div class="muted">${H(running ? 'db.pendingRunning' : 'db.pendingStopped')}</div>`] : null,
+    ['state.dataDir', v(windowInfo?.dataDir).replace(/\n/g, '<br>')],
+    ['state.hostVersion', v(s ? s.hostVersion : windowInfo?.version)],
+    s ? ['state.apiVersion', v(s.apiVersion)] : null,
+  ]);
+  renderDbForms();
+}
+
+// DB のクレジット: ビューごとの行を、同じ行はまとめて、どのビューのものかを添えて出す（文字のまま。HTML にしない）
+function credits(byView) {
+  const lines = new Map();
+  for (const [view, list] of Object.entries(byView || {})) for (const line of list) lines.set(line, [...(lines.get(line) || []), view]);
+  return [...lines].map(([line, views]) => `<div class="credit">${esc(line)} <span class="muted">(${esc(views.join(', '))})</span></div>`).join('');
+}
+
+// DB の利用条件（Markdown）を、見出し・段落・表・コード・https のリンクだけ描く。先に全文をエスケープするので、
+// 文の中の HTML は文字のまま出る（他人の DB も警告つきで読めるため）
+function markdown(text) {
+  const inline = (t) => esc(t)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  const cells = (line) => line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  return String(text).replace(/\r\n/g, '\n').split(/\n\s*\n/).map((block) => {
+    const lines = block.split('\n').filter((l) => l.trim());
+    if (!lines.length) return '';
+    if (lines.length === 1 && /^#{1,6}\s/.test(lines[0])) return `<h4>${inline(lines[0].replace(/^#+\s*/, ''))}</h4>`;
+    if (lines.every((l) => l.trim().startsWith('|'))) {
+      const rows = lines.filter((l) => !/^\s*\|?\s*:?-+/.test(l));
+      const [head, ...body] = rows.map(cells);
+      return `<table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join('')}</tr></thead>`
+        + `<tbody>${body.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    }
+    return `<p>${lines.map(inline).join('<br>')}</p>`;
+  }).join('');
+}
+
+function openTerms() {
+  const db = dbView?.info || {};
+  const none = `<span class="muted">${H('state.none')}</span>`;
+  $('terms-body').innerHTML = `<section><h3>${H('state.notice')}</h3>${db.notice ? `<div class="notice">${markdown(db.notice)}</div>` : none}</section>`
+    + `<section><h3>${H('state.credits')}</h3>${credits(db.credits) || none}</section>`;
+  $('terms').showModal();
+}
+$('db').addEventListener('click', (ev) => { if (ev.target.closest('#terms-open')) openTerms(); });
+$('terms-close').addEventListener('click', () => $('terms').close());
+$('terms').addEventListener('click', (ev) => { if (ev.target === $('terms')) $('terms').close(); });
+
+// ---- 詳細設定（settings.json。待ち受けるアドレスとポートは再起動から、ほかは保存したときから使う） ----
+// 窓が settings.json を自分で読み書きするので、OctantCompass が止まっていても変えられる（起動を止めた設定をここで直す）。
+// 出す項目とまとまりと並びは橋の settings() が返す（利用者が変える値だけ。内部の待ち時間は settings.json に手で書く）
+let settingsData = null;
+let editing = null;
+
+function showValue(key, x) {
+  if (key === 'allow_unsigned_db') return x ? `<span class="warn">${H('settings.on')}</span> <span class="muted">${H('settings.unsignedWarn')}</span>` : H('settings.off');
+  if (key === 'start_at_login') return H(x ? 'settings.on' : 'settings.off');
+  if (key === 'trusted_keys') return x.length ? x.map(esc).join('<br>') : H('settings.bundledOnly');
+  if (key === 'port' && x === 0) return H('settings.portAuto');
+  if (key === 'host') return `${esc(x)} <span class="muted">${H(['127.0.0.1', '::1', 'localhost'].includes(x) ? 'settings.hostLocal' : 'settings.hostOpen')}</span>`;
+  return x === null || x === undefined || x === '' ? H('state.none') : esc(x);
+}
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+async function refreshSettings() {
+  let result;
+  try { result = await bridge().settings(); } catch (e) { return; }
+  if (!result.ok) return;
+  settingsData = result.data;
+  renderSettings();
+}
+
+function renderSettings() {
+  const d = settingsData;
+  if (!d) return;
+  let html = '';
+  let group = null;
+  for (const r of d.settings) {
+    const key = r.key;
+    if (r.group !== group) { group = r.group; html += `<div class="group">${H(`settings.${group}`)}</div>`; }
+    // 動いている間は使っている値と、違えば再起動で使う値。止まっている間は保存した値（次の起動で使う）
+    const next = d.readable && d.running && !same(r.value, r.saved) ? `<span class="next">${H('settings.next', { value: '' })}${showValue(key, r.saved)}</span>` : '';
+    html += `<div class="set"><div class="name">${H(`setting.${key}`)}<span class="key">${esc(key)}</span></div>
+      <div class="val">${showValue(key, d.running ? r.value : r.saved)}${next}</div>
+      <button class="btn" data-edit="${esc(key)}" ${d.readable ? '' : 'disabled'}>${H('settings.change')}</button>`;
+    if (editing === key) html += editorHtml(r);
+    html += '</div>';
+  }
+  $('settings').innerHTML = html;
+  $('settings-note').textContent = !d.readable ? T('settings.unreadable', { path: d.path })
+    : T(d.running ? 'settings.note' : 'settings.noteStopped', { path: d.path });
+  $('apply-foot').hidden = !(d.readable && d.running && d.settings.some((r) => !same(r.value, r.saved)));
+  const input = $('settings').querySelector('[data-input]');
+  if (input) input.focus();
+}
+
+function editorHtml(r) {
+  const key = r.key;
+  const value = r.edit;
+  let field;
+  if (key === 'allow_unsigned_db' || key === 'start_at_login') {
+    field = `<select data-input>${['false', 'true'].map((v) => `<option value="${v}" ${v === value ? 'selected' : ''}>${H(v === 'true' ? 'settings.on' : 'settings.off')}</option>`).join('')}</select>`;
+  } else if (key === 'trusted_keys') {
+    field = `<textarea data-input rows="4" spellcheck="false" placeholder="${H('settings.keysPlaceholder')}">${esc(value)}</textarea>`;
+  } else {
+    const list = key === 'host' ? ' list="host-choices"' : '';
+    field = `<input class="text" data-input value="${esc(value)}" spellcheck="false" autocomplete="off"${list}>`
+      + (key === 'host' ? '<datalist id="host-choices"><option value="127.0.0.1"><option value="0.0.0.0"><option value="::"></datalist>' : '');
+  }
+  return `<div class="editor"><div class="help">${H(`settingHelp.${key}`, { default: r.default })}</div>${field}
+    <div class="row2"><button class="btn primary" data-save="${esc(key)}">${H('settings.save')}</button>
+    <button class="btn" data-cancel>${H('settings.cancel')}</button><span class="err" data-err></span></div></div>`;
+}
+
+$('settings').addEventListener('click', async (ev) => {
+  const edit = ev.target.closest('[data-edit]');
+  if (edit) { editing = editing === edit.dataset.edit ? null : edit.dataset.edit; renderSettings(); return; }
+  if (ev.target.closest('[data-cancel]')) { editing = null; renderSettings(); return; }
+  const save = ev.target.closest('[data-save]');
+  if (!save) return;
+  const key = save.dataset.save;
+  const value = $('settings').querySelector('[data-input]').value;
+  if (key === 'host' && !['127.0.0.1', '::1', 'localhost', ''].includes(value.trim()) && !confirm(T('settings.hostConfirm'))) return;
+  if (key === 'allow_unsigned_db' && value === 'true' && !confirm(T('settings.unsignedConfirm'))) return;
+  let result;
+  try { result = await bridge().save_setting(key, value); } catch (e) { result = { ok: false }; }
+  if (!result.ok) {
+    const failed = result.data && result.data.error && result.data.error.code === 'start_at_login_failed';
+    $('settings').querySelector('[data-err]').textContent = T(failed ? 'settings.loginFailed' : 'settings.invalid');
+    return;
+  }
+  editing = null;
+  await refreshSettings();
+  refreshLog();
+});
+
+function showTab(tab) {
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
+  $('tab-main').hidden = tab !== 'main';
+  $('tab-settings').hidden = tab !== 'settings';
+  if (tab === 'settings') refreshSettings();
+}
+$('tabs').addEventListener('click', (ev) => { const b = ev.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); });
+
+// ---- 手札（OctantVector が返した一覧を見せるだけ） ----
+async function refreshPresets() {
+  if (!presetsFor) {
+    $('presets-revision').textContent = '';
+    $('presets').innerHTML = `<div class="empty">${H('presets.notReady')}</div>`;
+    return;
+  }
+  let result;
+  try { result = await api('/manage/presets'); } catch (e) { return; }
+  if (!result.ok) return;
+  const list = result.data.presets || [];
+  $('presets-revision').textContent = result.data.revision ? T('presets.revision', { revision: result.data.revision }) : '';
+  if (!list.length) { $('presets').innerHTML = `<div class="empty">${H('presets.empty')}</div>`; return; }
+  let html = '';
+  let group = null;
+  for (const p of list) {
+    const g = pick(p.group);
+    if (g && g !== group) { html += `<div class="heading">${esc(g)}</div>`; }
+    group = g;
+    const inputs = (p.inputs || []).map((i) => i.kind === 'seed' ? T(i.optional ? 'presets.seedOptional' : 'presets.seed') : pick(i.label) || i.name || i.kind);
+    const hint = [pick(p.hint), ...inputs.map((i) => `[${i}]`)].filter(Boolean).join(' ');
+    html += `<div class="tile"><span class="label">${esc(pick(p.label))}</span><span class="hint" title="${esc(hint)}">${esc(hint)}</span><span class="id">${esc(p.id)}</span></div>`;
+  }
+  $('presets').innerHTML = html;
+}
+
+// ---- つないだ OctantPath ----
+async function refreshEnvs() {
+  if (!running) return;
+  let result;
+  try { result = await api('/manage/environments'); } catch (e) { return; }
+  if (!result.ok) return;
+  const list = result.data.environments || [];
+  pairedWhileShown(list);
+  if (!list.length) { $('envs').innerHTML = `<div class="empty">${H('envs.empty')}</div>`; return; }
+  $('envs').innerHTML = list.map((e) => `
+    <div class="row">
+      <div><div class="name" title="${esc(e.name)}">${esc(e.name)}</div>
+        <div class="sub">${esc(e.id)} · ${(e.signals ? H('envs.signals', { count: e.signals }) : H('envs.noSignals'))}</div></div>
+      <div><button class="btn danger" data-revoke="${esc(e.id)}" data-name="${esc(e.name)}">${H('envs.revoke')}</button></div>
+    </div>`).join('');
+}
+
+$('envs').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('[data-revoke]');
+  if (!b || !confirm(T('envs.revokeConfirm', { name: b.dataset.name }))) return;
+  b.disabled = true;
+  await api(`/manage/environments/${encodeURIComponent(b.dataset.revoke)}/revoke`, {}).catch(() => {});
+  refreshEnvs();
+  refreshLog();
+});
+
+let codeTimer = 0;
+let codeWatch = null;     // 合言葉を出している間、出したときにつながっていた OctantPath の id。新しい id が増えたら合言葉は使われた
+let codeWatchTimer = 0;
+function closeCode() {
+  clearInterval(codeTimer);
+  clearInterval(codeWatchTimer);
+  codeWatch = null;
+  $('code-digits').textContent = '';
+  $('code-copy').hidden = true;
+}
+// 合言葉を写す。別の PC の OctantPath へ送るとき用（2026-10-13）
+$('code-copy').addEventListener('click', async () => {
+  const code = $('code-digits').textContent;
+  if (!code) return;
+  try { await navigator.clipboard.writeText(code); } catch (e) {
+    const range = document.createRange(); range.selectNodeContents($('code-digits'));
+    getSelection().removeAllRanges(); getSelection().addRange(range); document.execCommand('copy'); getSelection().removeAllRanges();
+  }
+  $('code-copy').textContent = T('envs.copied');
+  setTimeout(() => { $('code-copy').textContent = T('envs.copy'); }, 1500);
+});
+// 合言葉は 1 回きりなので、つながったら閉じる（2026-10-13）。つながった名前を少しだけ見せてから消す
+function pairedWhileShown(list) {
+  if (!codeWatch) return;
+  const added = list.find((e) => !codeWatch.has(e.id));
+  if (!added) return;
+  closeCode();
+  $('code-note').textContent = T('envs.codeUsed', { name: added.name });
+  setTimeout(() => { if (!codeWatch) $('code').classList.remove('on'); }, 4000);
+}
+$('code-btn').addEventListener('click', async () => {
+  let before;
+  try { before = await api('/manage/environments'); } catch (e) { return; }
+  let result;
+  try { result = await api('/manage/pair-code', {}); } catch (e) { return; }
+  if (!result.ok) { $('code-note').textContent = T('error.generic'); return; }
+  codeWatch = new Set(before.ok ? (before.data.environments || []).map((e) => e.id) : []);
+  clearInterval(codeWatchTimer);
+  codeWatchTimer = setInterval(refreshEnvs, 1500);
+  const until = Date.now() + result.data.seconds * 1000;
+  $('code-digits').textContent = result.data.code;
+  $('code-copy').hidden = false;
+  $('code').classList.add('on');
+  clearInterval(codeTimer);
+  const tick = () => {
+    const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+    $('code-note').textContent = left ? T('envs.codeShown', { seconds: left }) : T('envs.codeExpired');
+    if (!left) closeCode();
+  };
+  tick();
+  codeTimer = setInterval(tick, 1000);
+  refreshLog();
+});
+
+// ---- OS のファイル選択画面（この窓の上に開く。選んだパスを欄に入れるだけで、切り替えはしない） ----
+let picking = false;  // 選択画面が開いている（閉じるまでほかの選択画面は開かない）
+async function pickInto(input, note, file = false) {
+  picking = true;
+  renderDbForms();
+  $(note).textContent = T('pick.open');
+  let result;
+  try { result = await bridge().pick($(input).value.trim() || null, file); } catch (e) { result = { ok: false }; }
+  picking = false;
+  renderDbForms();
+  if (!result.ok) { $(note).textContent = T('pick.failed'); return; }
+  $(note).textContent = '';
+  if (result.data) { $(input).value = result.data; $(input).dispatchEvent(new Event('input')); }
+}
+$('switch-pick').addEventListener('click', () => pickInto('switch-path', 'switch-note'));
+$('import-pick').addEventListener('click', () => pickInto('import-path', 'import-note', true));
+
+// ---- DB の切り替え・取り込み・更新（窓がするので、OctantCompass が止まっていてもできる。`octantcompass db` と同じ仕組み）。
+// どれも OctantCompass が開くのと同じように確かめてから、OctantCompass に渡す。動いていればすぐ切り替え、止まっていれば次の起動から使う。
+// 一度に 1 つ。終わるまで窓は閉じない（manager.py の busy）
+let asking = null;  // この画面が頼んで、答えを待っている作業（'switch' 'import' 'check' 'update'）
+let updateReady = false;  // 確かめた索引に取るものがある（「取り込む」を押せる）
+let cancelling = false;
+let indexShown = false;  // 索引の欄に、設定の index_url を入れた
+const mb = (bytes) => (bytes / 1048576).toFixed(bytes < 10485760 ? 1 : 0);
+
+function dbErrorText(code, failed) {
+  return T({ path_not_absolute: 'switch.notAbsolute', update_running: 'update.running', settings_unreadable: 'db.settingsUnreadable',
+    no_index: 'update.noIndex', index_unsupported: 'update.unsupported', index_unreadable: 'update.unreadable',
+    index_not_https: 'update.notHttps', update_cancelled: 'update.cancelled' }[code] || failed);
+}
+// 終わった作業の文と、OctantCompass がいつから使うか
+const handedOver = (text) => `${text} ${T(running ? 'db.nowRunning' : 'db.nextStart')}`;
+const signatureLines = (warnings) => (warnings || []).map((w) => `<br><span class="warn">${H('update.signature', { warning: w })}</span>`).join('');
+
+function renderDbForms() {
+  const work = dbView?.work;  // この窓で動いている作業（status。別の画面の操作でも、答えを待つ前でも分かる）
+  const busy = !!work || !!asking;
+  for (const id of ['switch-btn', 'import-btn', 'update-check']) $(id).disabled = busy;
+  for (const id of ['switch-pick', 'import-pick']) $(id).disabled = busy || picking;
+  $('update-go').disabled = busy || !updateReady;
+  // やめられるのは部品を取っている間だけ（展開は途中で止めない）
+  const fetching = work?.what === 'update' && work.progress;
+  $('update-cancel').hidden = !fetching;
+  $('update-cancel').disabled = cancelling;
+  if (fetching && !cancelling) $('update-note').textContent = T('update.progress', { done: mb(work.progress.done), total: mb(work.progress.total) });
+  if (dbView && !indexShown) { $('update-index').value = dbView.indexUrl || ''; indexShown = true; }
+}
+async function dbWork(what, call) {
+  asking = what;
+  renderDbForms();
+  let result;
+  try { result = await call(); } catch (e) { result = { ok: false, data: {} }; }
+  asking = null;
+  await refreshStatus();
+  refreshLog();
+  return result;
+}
+
+// 手渡しされた DB（<dbVersion>.full.tar。検証と展開は OctantVector がする）
+$('import-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const path = $('import-path').value.trim();
+  if (!path) return;
+  $('import-note').textContent = T('import.working');
+  const result = await dbWork('import', () => bridge().import_db(path));
+  $('import-note').innerHTML = result.ok ? esc(handedOver(T('import.done', { version: result.data.dbVersion }))) + signatureLines(result.data.signatureWarnings)
+    : esc(dbErrorText(result.data?.error?.code, 'import.failed'));
+  if (result.ok) $('import-path').value = '';
+});
+
+// DB のフォルダ（`octantcompass db switch` と同じ検証）
+$('switch-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const path = $('switch-path').value.trim();
+  if (!path) return;
+  $('switch-note').textContent = T('switch.working');
+  const result = await dbWork('switch', () => bridge().switch_db(path));
+  $('switch-note').textContent = result.ok ? handedOver(T('switch.done', { version: result.data.dbVersion }))
+    : dbErrorText(result.data?.error?.code, 'switch.failed');
+  if (result.ok) $('switch-path').value = '';
+});
+
+// 索引から（契約5 の受け取る側。何を取るかと検証は OctantVector がする）
+$('update-index').addEventListener('input', () => { updateReady = false; renderDbForms(); });
+$('update-check').addEventListener('click', async () => {
+  updateReady = false;
+  $('update-note').textContent = T('update.checking');
+  const result = await dbWork('check', () => bridge().check_update($('update-index').value.trim() || null));
+  if (!result.ok) { $('update-note').textContent = dbErrorText(result.data?.error?.code, 'update.unreadable'); return; }
+  const d = result.data;
+  if (!d.entries.length) { $('update-note').textContent = T('update.upToDate', { version: d.current ?? '—' }); return; }
+  const steps = d.entries.map((e) => `${e.dbVersion} (${T(e.kind === 'full' ? 'update.full' : 'update.diff')})`).join(' → ');
+  $('update-note').textContent = T('update.available', { steps, size: mb(d.size) });
+  updateReady = true;
+  renderDbForms();
+});
+
+$('update-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  updateReady = false;
+  cancelling = false;
+  $('update-note').textContent = T('update.working');
+  const result = await dbWork('update', () => bridge().update_db($('update-index').value.trim() || null));
+  cancelling = false;
+  // 署名が既知の鍵のものでない版も、OctantVector は警告を出して使う。その警告をここに残す
+  $('update-note').innerHTML = !result.ok ? esc(dbErrorText(result.data?.error?.code, 'update.failed'))
+    : result.data.updated ? esc(handedOver(T('update.done', { version: result.data.dbVersion }))) + signatureLines(result.data.signatureWarnings)
+    : esc(T('update.upToDate', { version: result.data.dbVersion ?? '—' }));
+  renderDbForms();
+});
+$('update-cancel').addEventListener('click', async () => {
+  cancelling = true;
+  $('update-note').textContent = T('update.cancelling');
+  renderDbForms();
+  try { await bridge().cancel_update(); } catch (e) { /* 取り込みの答えが結果を出す */ }
+});
+
+// ---- ログ ----
+let logLength = -1;
+async function refreshLog() {
+  if (!running) return;
+  let result;
+  try { result = await api('/manage/log'); } catch (e) { return; }
+  if (!result.ok) return;
+  const lines = result.data.lines || [];
+  const el = $('log');
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
+  el.innerHTML = lines.length ? lines.map((l) =>
+    `<span class="${esc(l.level)}"><span class="at">${esc(new Date(l.at).toLocaleTimeString(language))}</span> ${esc(l.message)}</span>`).join('\n')
+    : `<span class="at">${H('log.empty')}</span>`;
+  if (atBottom || logLength < 0) el.scrollTop = el.scrollHeight;
+  logLength = lines.length;
+}
+
+// ---- 再起動（設定を読み直し、同じプロセスの中で待ち受けを張り直す。DB とペアリングはそのまま） ----
+// 張り直せなければ OctantCompass は前のアドレスで答え続け、理由が status.restart に入る
+async function restart() {
+  if (!confirm(T('top.restartConfirm'))) return;
+  restartedFrom = status?.restart?.number || 0;
+  notice = '';
+  let result;
+  try { result = await api('/manage/restart', {}); } catch (e) { return; }
+  if (!result.ok) return;
+  restarting = Date.now();
+  renderStatus();
+}
+$('restart-btn').addEventListener('click', restart);
+$('apply-btn').addEventListener('click', restart);
+
+// ---- 起動と停止（止めても窓は残り、設定を変えてもう一度起動できる） ----
+$('start-btn').addEventListener('click', async () => {
+  starting = true;
+  renderStatus();
+  try { await bridge().start(); } catch (e) { /* 下の refreshStatus が理由を出す */ }
+  await refreshStatus();
+});
+$('stop-btn').addEventListener('click', async () => {
+  if (!confirm(T('top.stopConfirm'))) return;
+  notice = '';
+  try { await api('/manage/stop', {}); } catch (e) { /* 下の refreshStatus が知らせる */ }
+  await refreshStatus();
+});
+
+// ---- 言語とテーマ（この窓で選んだものは次の窓にも残る） ----
+async function applyLanguage() {
+  await loadLang();
+  renderStatus();
+  renderSettings();
+  refreshPresets();
+  refreshEnvs();
+  refreshLog();
+}
+$('lang').addEventListener('change', async (ev) => {
+  try { await bridge().choose_language(ev.target.value); } catch (e) { return; }
+  applyLanguage();
+});
+$('theme').addEventListener('change', async (ev) => {
+  const theme = ev.target.value;
+  let result;
+  try { result = await bridge().choose_theme(theme); } catch (e) { result = { ok: false }; }
+  if (result.ok) window.useTheme(theme);
+  renderThemes();
+});
+
+// 橋は窓が用意してから使える
+const bridgeReady = () => (window.pywebview && window.pywebview.api && window.pywebview.api.status ? Promise.resolve()
+  : new Promise((resolve) => window.addEventListener('pywebviewready', resolve, { once: true })));
+
+(async () => {
+  await bridgeReady();
+  await loadLang();
+  showTab('main');
+  await refreshStatus();
+  refreshEnvs();
+  refreshLog();
+  setInterval(refreshStatus, 2000);
+  setInterval(refreshLog, 2000);
+  setInterval(refreshEnvs, 5000);
+})();
+</script>
+</body>
+</html>

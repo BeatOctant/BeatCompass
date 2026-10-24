@@ -1,0 +1,33 @@
+name: test
+# Runs on pull requests and on pushes to main: the public copy under BeatOctant takes no pull requests, so a push
+# to main is where it is tested there. Documents are skipped, and a newer push to the same ref cancels the older run.
+on:
+  pull_request:
+    paths-ignore: ["**.md", "LICENSE"]
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "LICENSE"]
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"  # the newest 3.11 (requires-python is >=3.11.4); setup-python.sh uses this python3
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false  # setup-python.sh keeps its own cache in .uv-cache/
+      # Without the octantvector extra: the tests use FakeVectorEngine and a stand-in runtime,
+      # and the contract examples copied under tests/examples/, so neither OctantVector nor OctantSpecs is fetched.
+      - run: bash scripts/setup-python.sh
+      - run: .venv/bin/python -m pytest -q

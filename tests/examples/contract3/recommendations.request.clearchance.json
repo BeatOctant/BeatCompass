@@ -1,0 +1,7 @@
+{
+  "count": 10,
+  "difficulty": 0.6,
+  "exclude": [
+    { "hash": "5555555555555555555555555555555555555555", "characteristic": "Standard", "difficulty": "ExpertPlus" }
+  ]
+}

@@ -1,0 +1,8 @@
+.octantspecs/
+__pycache__/
+*.pyc
+.venv/
+.uv-cache/
+dist/
+build/
+.pytest_cache/

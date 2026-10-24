@@ -1,0 +1,25 @@
+{
+  "revision": "2026.10.04-1",
+  "presets": [
+    { "id": "all", "label": "すべて", "hint": "選んでいる譜面に近いものを、どの軸でも", "inputs": [{ "kind": "seed" }] },
+    { "id": "song", "label": "似た曲", "hint": "曲の音が近い", "inputs": [{ "kind": "seed" }] },
+    { "id": "chart", "label": "似たマップ", "hint": "譜面が近い", "inputs": [{ "kind": "seed" }] },
+    {
+      "id": "genre",
+      "label": "ジャンル",
+      "inputs": [
+        {
+          "kind": "choice",
+          "name": "genre",
+          "label": "ジャンル",
+          "options": [
+            { "value": "jpop", "label": "J-POP" },
+            { "value": "rock", "label": "ロック" }
+          ]
+        }
+      ]
+    },
+    { "id": "challenge", "label": "挑戦", "inputs": [{ "kind": "seed", "optional": true }] },
+    { "id": "again", "label": "久しぶり", "hint": "前に好きだったマップ", "inputs": [] }
+  ]
+}

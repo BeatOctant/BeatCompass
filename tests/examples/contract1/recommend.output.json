@@ -1,0 +1,37 @@
+{
+  "dbVersion": "2026.10.04",
+  "aims": { "Standard": "normal" },
+  "replaced": [
+    { "from": "9999999999999999999999999999999999999999", "to": "1111111111111111111111111111111111111111" }
+  ],
+  "unknownEvents": 0,
+  "ignoredWeights": [],
+  "items": [
+    {
+      "hash": "2222222222222222222222222222222222222222",
+      "characteristic": "Standard",
+      "difficulty": "Hard",
+      "rank": 1,
+      "reason": {
+        "views": { "clap_htsat_unfused@1": 0.41, "chart_patterns@2": 0.37 },
+        "difficulty": {
+          "aim": "normal",
+          "distance": 0.41,
+          "target": 0.45,
+          "clearChance": 0.83,
+          "nearestStrong": { "hash": "3333333333333333333333333333333333333333", "characteristic": "Standard", "difficulty": "Expert" }
+        }
+      }
+    },
+    {
+      "hash": "6666666666666666666666666666666666666666",
+      "characteristic": "OneSaber",
+      "difficulty": "Expert",
+      "rank": 2,
+      "reason": {
+        "views": { "clap_htsat_unfused@1": 0.39 },
+        "difficulty": null
+      }
+    }
+  ]
+}

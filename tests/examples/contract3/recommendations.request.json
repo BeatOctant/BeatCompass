@@ -1,0 +1,10 @@
+{
+  "seed": { "hash": "1111111111111111111111111111111111111111", "characteristic": "Standard", "difficulty": "Expert" },
+  "weights": { "clap_htsat_unfused": 1.0 },
+  "count": 30,
+  "difficulty": "auto",
+  "exclude": [
+    { "hash": "4444444444444444444444444444444444444444", "reason": "downloaded_and_rejected" }
+  ],
+  "params": { "k": 5, "sessionGapMinutes": 30, "warmupPlays": 3 }
+}

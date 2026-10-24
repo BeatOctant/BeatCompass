@@ -1,0 +1,123 @@
+name: build
+# The standalone executables for Linux and Windows, built with the octantvector and gui extras and checked by
+# tests/test_standalone.py (start, pairing, history, profile and recommendations with the synthetic engine; the
+# window starting the host).
+# A v* tag also makes a draft GitHub Release with both files.
+# Minutes: a Windows minute costs about twice a Linux one (estimate from the
+# per-minute rates), so this runs only when the build itself changes, on a version tag, or by hand.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/build.yml"
+      - "scripts/build-standalone.py"
+      - "scripts/octantcompass.spec"
+      - "scripts/pyinstaller-hooks/**"
+      - "scripts/frozen-entry.py"
+      - "src/octantcompass/frozen.py"
+      - "src/octantcompass/window.py"
+      - "src/octantcompass/minsize.py"
+      - "tests/test_standalone.py"
+      - "pyproject.toml"
+      - "uv.lock"
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            exe: dist/octantcompass
+          - os: windows-latest
+            exe: dist/octantcompass.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check the OctantVector token
+        # Only the private repository needs it: the public copy in the BeatOctant organization reads the public repositories
+        if: github.repository_owner == 'nejiman10'
+        env:
+          BEATCOMPASS_CI_READ_BEATVECTOR: ${{ secrets.BEATCOMPASS_CI_READ_BEATVECTOR }}
+        run: |
+          if [ -z "$BEATCOMPASS_CI_READ_BEATVECTOR" ]; then
+            echo "::error title=BEATCOMPASS_CI_READ_BEATVECTOR is not set::OctantVector is a private repository. Add a fine-grained token with read-only Contents access to nejiman10/OctantVector as the repository secret BEATCOMPASS_CI_READ_BEATVECTOR (Settings > Secrets and variables > Actions); see README.md, 単体実行ファイル."
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - id: python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"  # the newest 3.11 (requires-python is >=3.11.4)
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+      - name: Install what the window needs on Linux
+        if: runner.os == 'Linux'
+        # PyGObject and pycairo build from source against gobject-introspection and cairo; the build takes WebKitGTK's
+        # typelibs (octantcompass.spec), and the test opens the window on a virtual display.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgirepository1.0-dev libcairo2-dev pkg-config \
+            gir1.2-webkit2-4.1 xvfb xauth
+      - name: Install with the build, gui and octantvector extras
+        env:
+          # git, run by uv, reads OctantVector (uv.lock names it by its https URL) with the token.
+          # Only this step sees the token.
+          GIT_CONFIG_COUNT: ${{ github.repository_owner == 'nejiman10' && '1' || '0' }}  # no token in the public copy
+          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ secrets.BEATCOMPASS_CI_READ_BEATVECTOR }}@github.com/BeatOctant/OctantVector.git.insteadOf
+          GIT_CONFIG_VALUE_0: https://github.com/BeatOctant/OctantVector.git
+        run: uv sync --frozen --python "${{ steps.python.outputs.python-path }}" --no-python-downloads --extra test --extra build --extra gui --extra octantvector
+      - run: uv run --frozen --no-sync python scripts/build-standalone.py
+      - name: Check the executable
+        env:
+          OCTANTCOMPASS_TEST_EXECUTABLE: ${{ matrix.exe }}
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then display="xvfb-run -a"; else display=""; fi
+          $display uv run --frozen --no-sync python -m pytest tests/test_standalone.py -q
+      - name: Name the file
+        run: |
+          name="${GITHUB_REF_NAME//\//-}"
+          os="$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')"
+          mkdir out
+          case "${{ matrix.exe }}" in
+            *.exe) cp "${{ matrix.exe }}" "out/octantcompass-$name-$os-x64.exe" ;;
+            *) cp "${{ matrix.exe }}" "out/octantcompass-$name-$os-x64" ;;
+          esac
+          # What the executable bundles and under which licences (octantcompass.spec, third_party_notices.py).
+          cp build/octantcompass/THIRD-PARTY-NOTICES.txt "out/octantcompass-$name-$os-x64-THIRD-PARTY-NOTICES.txt"
+      # Kept only for a tag (the release job below) or a run by hand: a pull request is checked by the build and the test
+      # above, and its ~150 MB per run filled the free plan's 0.5 GB of Actions storage.
+      - if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: octantcompass-${{ runner.os }}
+          path: out/*
+          retention-days: 1
+  release:
+    # A v* tag puts both executables on a draft GitHub Release (release files do not count against artifact storage).
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: out
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" out/* --repo "$GITHUB_REPOSITORY" --draft --title "OctantCompass $GITHUB_REF_NAME" --notes "OctantCompass $GITHUB_REF_NAME, one executable per OS (Python and OctantVector included). The DB is separate. The THIRD-PARTY-NOTICES file next to each executable lists the software it bundles and their licences."

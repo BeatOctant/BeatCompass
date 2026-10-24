@@ -1,0 +1,2 @@
+OctantSpecs の contracts/examples/mod-api から写した
+OctantSpecs ref: main（2026-10-23 に写した。hostVersion はテストが OctantCompass の版で、health.ready.json の instanceId はペアリングの結果で埋める）

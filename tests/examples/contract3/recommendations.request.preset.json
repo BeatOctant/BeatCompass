@@ -1,0 +1,9 @@
+{
+  "preset": "genre",
+  "choices": { "genre": "jpop" },
+  "count": 30,
+  "exclude": [
+    { "hash": "4444444444444444444444444444444444444444", "reason": "downloaded_and_rejected" }
+  ],
+  "params": { "k": 5, "sessionGapMinutes": 30, "warmupPlays": 3 }
+}
