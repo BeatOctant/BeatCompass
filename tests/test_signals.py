@@ -98,7 +98,9 @@ def test_unsupported_type_is_counted_but_kept_out_of_the_history(tmp_path):
 
 @pytest.mark.parametrize("event", [None, [], {}, {"type": []},
     play("2026-10-04T13:00:00"), play("2026-10-04T13:00:00+01:00"),
-    play("invalid"), play("2026-10-04T13:00:00Z", "invalid")])
+    play("invalid"), play("2026-10-04T13:00:00Z", "invalid"),
+    {"type": "imported_play", "source": "PlayerData", "hash": "c" * 40, "characteristic": "Standard",
+     "difficulty": "Expert", "count": 2, "cleared": "yes", "at": "2026-10-04T13:00:00Z"}])
 def test_malformed_events_are_isolated(tmp_path, event):
     with connected(tmp_path, FakeVectorEngine()) as (client, headers):
         response = send(client, headers, [event])

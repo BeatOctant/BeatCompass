@@ -19,7 +19,7 @@ Beat Saber の MOD [OctantPath](https://github.com/BeatOctant/OctantPath) に推
 | 相手 | 版 | つなぐもの |
 | --- | --- | --- |
 | OctantPath（MOD と OctantPath Desktop）、OctantPathAndroid | 最新 | [契約3（OctantPath ↔ OctantCompass）](https://github.com/BeatOctant/OctantSpecs/blob/main/contracts/mod-api.md) 2.0、[契約6（つなぐ側 ↔ OctantCompass）](https://github.com/BeatOctant/OctantSpecs/blob/main/contracts/launch.md) 2.0 |
-| OctantVector | v0.9.1 のタグ（`pyproject.toml` の `tool.uv.sources`。範囲は `>=0.9.0,<0.10`） | [契約1 推薦側（OctantCompass → OctantVector）](https://github.com/BeatOctant/OctantSpecs/blob/main/contracts/engine-runtime.md) 1.0 |
+| OctantVector | v0.9.2 のタグ（`pyproject.toml` の `tool.uv.sources`。範囲は `>=0.9.0,<0.10`） | [契約1 推薦側（OctantCompass → OctantVector）](https://github.com/BeatOctant/OctantSpecs/blob/main/contracts/engine-runtime.md) 1.0 |
 | 配布 DB（OctantHarvest が作る） | 最新 | [契約2（DB 生成 ↔ 推薦コア）](https://github.com/BeatOctant/OctantSpecs/blob/main/contracts/vector-db.md) 1.1、[契約5（OctantHarvest → 配布先 → OctantCompass）](https://github.com/BeatOctant/OctantSpecs/blob/main/contracts/distribution.md) 1.1 |
 | OctantSpecs | `OCTANTSPECS_REF`（`main`） | テストが読む契約の例 |
 

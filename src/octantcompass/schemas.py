@@ -98,6 +98,7 @@ class PlaySignal(ChartSignal):
 class ImportedPlaySignal(ChartSignal):
     source: StrictStr
     count: Annotated[StrictInt, Field(ge=0)]
+    cleared: StrictBool = None
 
 
 class RecommendationSignal(ChartSignal):
