@@ -509,7 +509,7 @@ wheels = [
 
 [[package]]
 name = "octantcompass"
-version = "0.2.1"
+version = "0.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
@@ -538,7 +538,7 @@ test = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115,<1" },
     { name = "httpx", marker = "extra == 'test'", specifier = ">=0.27,<1" },
-    { name = "octantvector", marker = "extra == 'octantvector'", git = "https://github.com/BeatOctant/OctantVector.git?tag=v0.9.2" },
+    { name = "octantvector", marker = "extra == 'octantvector'", git = "https://github.com/BeatOctant/OctantVector.git?tag=v0.10.0" },
     { name = "platformdirs", specifier = ">=4.2,<5" },
     { name = "pydantic", specifier = ">=2.9,<3" },
     { name = "pyinstaller", marker = "extra == 'build'", specifier = ">=6.9,<7" },
@@ -551,8 +551,8 @@ provides-extras = ["test", "build", "octantvector", "gui"]
 
 [[package]]
 name = "octantvector"
-version = "0.9.2"
-source = { git = "https://github.com/BeatOctant/OctantVector.git?tag=v0.9.2#8349c5d0f40be616b43d249838ac79f5646fdf76" }
+version = "0.10.0"
+source = { git = "https://github.com/BeatOctant/OctantVector.git?tag=v0.10.0#9641bf1582f63cdbb539f9d2ec81ea734b0f4346" }
 dependencies = [
     { name = "cryptography" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
